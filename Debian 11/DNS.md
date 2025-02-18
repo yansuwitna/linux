@@ -7,7 +7,7 @@ IP Address : **192.168.10.200**
 **Domain**
 DNS : **smkn1abang.com**
 
-**Sub Domain**
+**Sub Domain**  
 Sub Domain 1 : **www.smkn1abang.com**  
 Sub Domain 2 : **ftp.smkn1abang.com**  
 Sub Domain 3 : **osis.smkn1abang.com**  
