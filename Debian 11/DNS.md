@@ -115,3 +115,12 @@ $TTL    604800
 ```
 
 
+**CARA CEPAT MENGUBAH ISI FILE**
+sed -i 's/localhost/smkn1abang.com' db.smk  
+
+***Artinya***
+s = String/Text  
+localhost = Text yang dicari  
+smkn1abang.com = Pengganti  
+db.smk = File yang akan diubah  
+
