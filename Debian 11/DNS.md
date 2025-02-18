@@ -116,8 +116,9 @@ $TTL    604800
 
 
 **CARA CEPAT MENGUBAH ISI FILE**  
+```console
 sed -i 's/localhost/smkn1abang.com' db.smk  
-
+```
 ***Artinya***
 s = String/Text  
 localhost = Text yang dicari  
