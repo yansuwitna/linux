@@ -8,9 +8,12 @@ apt-get install proftpd proftpd-mod-crypto -y
 
 **2. Edit file /etc/proftpd/proftpd.conf**
 
+***Hilangkah Tanda #***
 ```console
 UseIPv6 off
+
 DefaultRoot ~
+
 Include /etc/proftpd/tls.conf
 
 <Anonymous ~ftp>
@@ -28,12 +31,14 @@ Include /etc/proftpd/tls.conf
 
 **3. Edit File /etc/proftpd/modules.conf**
 
+***Hilangkah Tanda #***
 ```console
     LoadModule mod_tls.c
 ```
 
 **4. Edit File /etc/proftpd/tls.conf**
 
+***Hilangkah Tanda #***
 ```console
     TLSEngine       on
     TLSLog          /var/log/proftpd/tls.log
