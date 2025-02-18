@@ -85,7 +85,8 @@ Password : **Password User**
 
 Mencoba Konfigurasi  
 Klik **Tanda Panah** disamping Icon **Sites**  
-Kemudian Klik Salah Satu Nama Sitename
+Kemudian Klik Salah Satu Nama Sitename  
+Akan Muncul Informasi Sertifikat Kemudian OK
 
 
 
