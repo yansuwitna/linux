@@ -115,7 +115,7 @@ $TTL    604800
 ```
 
 
-**CARA CEPAT MENGUBAH ISI FILE**
+**CARA CEPAT MENGUBAH ISI FILE**  
 sed -i 's/localhost/smkn1abang.com' db.smk  
 
 ***Artinya***
