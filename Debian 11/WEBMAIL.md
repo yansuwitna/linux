@@ -21,30 +21,10 @@ Ulangi Password : **123** (*Harus Sama Dengan Diatas*)
 **Konfigurasi Postfix /etc/postfix/main.cf**  
 
 ```console
-mydestination = mail.smkn1abang.com
-mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 0.0.0.0/0
-mailbox_size_limit = 0
-recipient_delimiter = +
-inet_interfaces = all
-inet_protocols = all
+myhostname = smkn1abang.com
 
 #Tambahkan Ini
-home_maildir = Maildir/
-```
-
-**Konfigurasi Dovecot /etc/dovecot/dovecot.conf**
-```console
-listen = *
-```
-
-**Konfigurasi Dovecot /etc/dovecot/conf.d/10-auth.conf**
-```console
-disable_plaintext_auth = no
-```
-
-**Konfigurasi Dovecot /etc/dovecot/conf.d/10-mail.conf**
-```console
-mail_location = maildir:~/Maildir
+home_mailbox = Maildir/
 ```
 
 **Konfigurasi Rouncube /etc/roundube/config.inc.php**
@@ -54,12 +34,6 @@ $config['smtp_server'] = 'mail.smkn1abang.com';
 $config['smtp_port'] = '25';
 $config['smtp_user'] = '';
 $config['smtp_pass'] = '';
-```
-
-**Mengaktifkan Konfigurasi Web Mail pada /etc/apache2/apache.conf**  
-Tambahkan paling Bawah
-```console
-Include /etc/roundcube/apache.conf
 ```
 
 **Mengaktifkan Virtual Host mail.smkn1abang.com pada apache**
@@ -82,11 +56,6 @@ nano mail.conf
 *Mengaktifkan Sites *
 ```console
     a2ensite mail.conf
-```
-
-**Membuat Folder Maildir di /etc/skell**
-```console 
-maildirmake.dovecot /etc/skel/Maildir
 ```
 
 **Membuat User Baru**
