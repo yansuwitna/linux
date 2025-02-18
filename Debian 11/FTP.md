@@ -59,8 +59,7 @@ Include /etc/proftpd/tls.conf
 
 **7. Pengujian Menggunakan File Zilla**
 
-----------
-Install Filezilla
-Klik File > Site Manager
+Install **Filezilla**
+Klik **File** > **Site Manager**
 Klik New Sites
 
