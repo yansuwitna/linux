@@ -27,10 +27,15 @@ myhostname = smkn1abang.com
 home_mailbox = Maildir/
 ```
 
+**Konfigurasi Dovecot /etc/dovecot/conf.d/10-mail.conf**
+```console
+mail_location = maildir:~/Maildir
+```
+
 **Konfigurasi Rouncube /etc/roundube/config.inc.php**
 ```console
-$config['default_host'] = 'mail.smkn1abang.com';
-$config['smtp_server'] = 'mail.smkn1abang.com';
+$config['default_host'] = 'smkn1abang.com';
+$config['smtp_server'] = 'smkn1abang.com';
 $config['smtp_port'] = '25';
 $config['smtp_user'] = '';
 $config['smtp_pass'] = '';
@@ -65,9 +70,9 @@ adduser bima
 
 **Restart Service Postfix, Dovecot dan Apache2**
 ```console
-systemctl restart postfix
-systemctl restart dovecot-imapd
-systemctl restart apache2
+service postfix restart
+service dovecot restart
+service apache2 restart
 ```
 
 **Penghujian Pengiriman Email**
