@@ -3,7 +3,7 @@
 **1. Instalasi FTP**
 
 ```console
-apt-get install proftpd -y
+apt-get install proftpd proftpd-mod-crypto -y
 ```
 
 **2. Konfig file /etc/proftpd/proftpd.conf**
