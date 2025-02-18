@@ -83,7 +83,7 @@ Logon Type : **Normal**
 User : **Nama User**  
 Password : **Password User** 
 
-Mencoba Konfigurasi 
+Mencoba Konfigurasi  
 Klik **Tanda Panah** disamping Icon **Sites**  
 Kemudian Klik Salah Satu Nama Sitename
 
