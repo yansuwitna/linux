@@ -7,7 +7,7 @@ IP Address : **192.168.10.200**
 **Domain**
 DNS : **smkn1abang.com**
 
-**Sub Domain**  
+**Sub Domain dengan CNAME**  
 Sub Domain 1 : **www.smkn1abang.com**  
 Sub Domain 2 : **ftp.smkn1abang.com**  
 Sub Domain 3 : **osis.smkn1abang.com**  
@@ -44,11 +44,43 @@ cp /etc/bind/db.127 /etc/bind/db.ip
 ```
 
 **3. Konfigurasi DNS pada File /etc/bind/db.smk**
-
+```console
+;
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     smkn1abang.com. root.smkn1abang.com. (
+                             20         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      smkn1abang.com.
+@       IN      A       192.168.10.200
+www     IN      CNAME   smkn1abang.com.
+ftp     IN      CNAME   smkn1abang.com.
+osis    IN      CNAME   smkn1abang.com.
+sia     IN      CNAME   smkn1abang.com.
+mail    IN      CNAME   smkn1abang.com.
+```
 
 
 **4. Konfigurasi IP pada File /etc/bind/db.ip**
-
+```console
+; BIND reverse data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     smkn1abang.com. root.smkn1abang.com. (
+                             10         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      smkn1abang.com.
+200     IN      PTR     smkn1abang.com.
+```
 
 **5. Restart Service**
 ```console
