@@ -2,8 +2,26 @@
 
 **1. Instalasi FTP**
 
-`apt-get install proftpd`
+```console
+apt-get install proftpd -y
+```
+
+**2. Konfig file /etc/proftpd/proftpd.conf**
 
 ```console
-apt-get install proftpd
+UseIPv6 off
+DefaultRoot ~
+Include /etc/proftpd/tls.conf
+
+<Anonymous ~ftp>
+    User ftp
+    Group nogroup
+    UserAlias anonymous ftp
+    DirFakeUser on ftp
+    DirFakeGroup on ftp
+    RequireValidShell off
+    MaxClients 10
+    DisplayLogin welcome.msg
+    DisplayChdir .message 
+</Anonymous>
 ```
