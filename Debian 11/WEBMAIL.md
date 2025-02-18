@@ -8,17 +8,17 @@
 apt-get install postfix dovecot-imapd mariadb-server roundcube -y
 
 ```
-*Postfix Configuration* 
-Melanjutkan Konfigurasi: **OK**
-Type mail : **Internet Site**
-System mail name : **mail.smkn1abang.com** (*Sesuai dengan Domain*)
+*Postfix Configuration*  
+Melanjutkan Konfigurasi: **OK**  
+Type mail : **Internet Site**  
+System mail name : **mail.smkn1abang.com** (*Sesuai dengan Domain*)  
 
-*Konfig Rouncube* 
-Config Database : **Yes**
-Password MySQL : **123** (*Sesuai Keinginan*)
-Ulangi Password : **123** (*Harus Sama Dengan Diatas*)
+*Konfig Rouncube*   
+Config Database : **Yes**  
+Password MySQL : **123** (*Sesuai Keinginan*)  
+Ulangi Password : **123** (*Harus Sama Dengan Diatas*)  
 
-**Konfigurasi Postfix /etc/postfix/main.cf**
+**Konfigurasi Postfix /etc/postfix/main.cf**  
 
 ```console
 mydestination = mail.smkn1abang.com
