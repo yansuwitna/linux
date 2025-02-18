@@ -60,6 +60,32 @@ Include /etc/proftpd/tls.conf
 **7. Pengujian Menggunakan File Zilla**
 
 Install **Filezilla**  
+
+Membuat Pengujian Anonim  
 Klik **File** > **Site Manager**  
-Klik New Sites
+Klik **New Sites** 
+Isi Nama : **Anonim**   
+Protocol **FTP - File Transfer Protocol**  
+Host : **IP Address FTP**  
+Port : **21**  
+Encryption : **use explicit FTP over TLS if available**  
+Logon Type : **Anonymous**  
+
+Membuat Pengujian User 
+Klik **File** > **Site Manager**  
+Klik **New Sites** 
+Isi Nama : **Server**   
+Protocol **FTP - File Transfer Protocol**  
+Host : **IP Address FTP**  
+Port : **21**  
+Encryption : **use explicit FTP over TLS if available**  
+Logon Type : **Normal**  
+User : **Nama User**  
+Password : **Password User** 
+
+Mencoba Konfigurasi 
+Klik **Tanda Panah** disamping Icon **Sites**  
+Kemudian Klik Salah Satu Nama Sitename
+
+
 
