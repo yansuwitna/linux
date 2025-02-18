@@ -8,11 +8,11 @@ IP Address : **192.168.10.200**
 DNS : **smkn1abang.com**
 
 **Sub Domain**
-Sub Domain 1 : **www.smkn1abang.com**
-Sub Domain 2 : **ftp.smkn1abang.com**
-Sub Domain 3 : **osis.smkn1abang.com**
-Sub Domain 4 : **sia.smkn1abang.com**
-Sub Domain 5 : **mail.smkn1abang.com**
+Sub Domain 1 : **www.smkn1abang.com**  
+Sub Domain 2 : **ftp.smkn1abang.com**  
+Sub Domain 3 : **osis.smkn1abang.com**  
+Sub Domain 4 : **sia.smkn1abang.com**  
+Sub Domain 5 : **mail.smkn1abang.com**  
 
 ## Instalasi 
 
