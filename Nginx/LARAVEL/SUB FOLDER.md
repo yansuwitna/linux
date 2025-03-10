@@ -41,40 +41,40 @@ URL 10.10.10.10/sh/projek/sma/public akan cocok dengan regex berikut dari konfig
 (.*)? akan menangkap sh/projek/sma sebagai $1  
 Jadi, path yang cocok adalah /sh/projek/sma/public/  
 
-Root direktori yang didefinisikan dalam konfigurasi adalah:
+Root direktori yang didefinisikan dalam konfigurasi adalah:  
 
 ~~~console
 root /var/www/html;
 ~~~ 
 
-Ini berarti semua file akan dicari di dalam /var/www/html.
+Ini berarti semua file akan dicari di dalam /var/www/html.  
 
-Namun, karena ada try_files, Nginx akan mencoba beberapa opsi:
+Namun, karena ada try_files, Nginx akan mencoba beberapa opsi:  
 
-Cek apakah file atau folder ada di /var/www/html/sh/projek/sma/public/
+Cek apakah file atau folder ada di /var/www/html/sh/projek/sma/public/  
 
-Jika ada file atau folder dengan path tersebut, maka akan disajikan.
+Jika ada file atau folder dengan path tersebut, maka akan disajikan.  
 
 
-Jika tidak ditemukan, maka akan dialihkan ke:
+Jika tidak ditemukan, maka akan dialihkan ke:  
 
 ~~~console
     /$1/public/index.php?$args;
 ~~~
 
-$1 adalah sh/projek/sma, sehingga akan menjadi:
+$1 adalah sh/projek/sma, sehingga akan menjadi:  
 
 ~~~console
 /sh/projek/sma/public/index.php?$args
 ~~~
 
-Nginx akan mencari /var/www/html/sh/projek/sma/public/index.php
-Jika file index.php ada, maka Nginx akan meneruskannya ke PHP-FPM untuk diproses.
-Jika index.php tidak ada, akan terjadi error 404 (Not Found).
+Nginx akan mencari /var/www/html/sh/projek/sma/public/index.php  
+Jika file index.php ada, maka Nginx akan meneruskannya ke PHP-FPM untuk diproses.  
+Jika index.php tidak ada, akan terjadi error 404 (Not Found).  
 
 
 **Kesimpulan**
-Jika folder /var/www/html/sh/projek/sma/public/ ada dan memiliki file, maka file tersebut akan dilayani.
-Jika tidak ada file yang sesuai, maka permintaan akan diteruskan ke /var/www/html/sh/projek/sma/public/index.php.
-Jika index.php tidak ada, Nginx akan menampilkan error 404 Not Found.
-Jika PHP-FPM tidak dikonfigurasi dengan benar, mungkin terjadi error 502 Bad Gateway.
+Jika folder /var/www/html/sh/projek/sma/public/ ada dan memiliki file, maka file tersebut akan dilayani.  
+Jika tidak ada file yang sesuai, maka permintaan akan diteruskan ke /var/www/html/sh/projek/sma/public/index.php.  
+Jika index.php tidak ada, Nginx akan menampilkan error 404 Not Found.  
+Jika PHP-FPM tidak dikonfigurasi dengan benar, mungkin terjadi error 502 Bad Gateway.  
