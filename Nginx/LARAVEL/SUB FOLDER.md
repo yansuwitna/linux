@@ -73,7 +73,7 @@ Jika file index.php ada, maka Nginx akan meneruskannya ke PHP-FPM untuk diproses
 Jika index.php tidak ada, akan terjadi error 404 (Not Found).  
 
 
-**Kesimpulan**
+**Kesimpulan**  
 Jika folder /var/www/html/sh/projek/sma/public/ ada dan memiliki file, maka file tersebut akan dilayani.  
 Jika tidak ada file yang sesuai, maka permintaan akan diteruskan ke /var/www/html/sh/projek/sma/public/index.php.  
 Jika index.php tidak ada, Nginx akan menampilkan error 404 Not Found.  
