@@ -5,22 +5,14 @@
 
 input double LotSize = 0.01;
 input int TakeProfitPoints = 10;
+input int StopLossPoints = 100;
 input int Slippage = 10;
 input ulong MagicNumber = 445566;
 
-// Batas kerugian bertingkat (dalam poin)
-input int LossLevel1 = 50;
-input int LossLevel2 = 60;
-input int LossLevel3 = 70;
-input int LossLevel4 = 80;
-input int LossLevel5 = 90;
-input int LossLevel6 = 100;
-
-int LossLevels[] = {LossLevel1, LossLevel2, LossLevel3, LossLevel4, LossLevel5, LossLevel6};
-
 //+------------------------------------------------------------------+
 //| Expert Tick Function                                             |
-//+------------------------------------------------------------------+
+//+------------------------------------------------------------------
+
 void OnTick()
 {
    int buyCount = 0;
@@ -46,10 +38,20 @@ void OnTick()
       OpenSell();
       return;
    }
-
-   // Cek BUY dan SELL untuk averaging jika rugi mendekati loss level
-   CheckBuyAveraging();
-   CheckSellAveraging();
+   
+   //======================
+   //Jika BUY 0
+   if(buyCount == 0 ){
+      OpenBuy();
+      return;
+   }
+   
+   //Jika SEL 0
+   if(sellCount == 0 ){
+      OpenSell();
+      return;
+   }
+   
 }
 
 //+------------------------------------------------------------------+
@@ -59,6 +61,7 @@ void OpenBuy()
 {
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double tp = ask + TakeProfitPoints * _Point;
+   double sl = ask - StopLossPoints * _Point; // SL di bawah harga BUY
 
    MqlTradeRequest request;
    MqlTradeResult result;
@@ -70,6 +73,7 @@ void OpenBuy()
    request.type = ORDER_TYPE_BUY;
    request.price = ask;
    request.tp = tp;
+   request.sl = sl; // SET SL
    request.deviation = Slippage;
    request.magic = MagicNumber;
    request.comment = "AutoBuy";
@@ -84,6 +88,7 @@ void OpenSell()
 {
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double tp = bid - TakeProfitPoints * _Point;
+   double sl = bid + StopLossPoints * _Point; // SL di bawah harga BUY
 
    MqlTradeRequest request;
    MqlTradeResult result;
@@ -95,98 +100,10 @@ void OpenSell()
    request.type = ORDER_TYPE_SELL;
    request.price = bid;
    request.tp = tp;
+   request.sl = sl; // SET SL
    request.deviation = Slippage;
    request.magic = MagicNumber;
    request.comment = "AutoSell";
 
    OrderSend(request, result);
-}
-
-//+------------------------------------------------------------------+
-//| Fungsi averaging posisi BUY                                     |
-//+------------------------------------------------------------------+
-void CheckBuyAveraging()
-{
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-
-   for (int i = 0; i < PositionsTotal(); i++)
-   {
-      if (PositionGetTicket(i) > 0 &&
-          PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY &&
-          PositionGetString(POSITION_SYMBOL) == _Symbol &&
-          PositionGetInteger(POSITION_MAGIC) == (long)MagicNumber)
-      {
-         double entryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
-         double lossPoint = (entryPrice - bid) / _Point;
-
-         for (int j = 0; j < ArraySize(LossLevels); j++)
-         {
-            int level = LossLevels[j];
-            if (MathAbs(lossPoint - level) < 1.0 && !AveragingExistsAtLevel(level, POSITION_TYPE_BUY))
-            {
-               Print("📉 BUY floating loss mendekati -", level, " → Buka BUY baru");
-               OpenBuy();
-               return;
-            }
-         }
-      }
-   }
-}
-
-//+------------------------------------------------------------------+
-//| Fungsi averaging posisi SELL                                    |
-//+------------------------------------------------------------------+
-void CheckSellAveraging()
-{
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-
-   for (int i = 0; i < PositionsTotal(); i++)
-   {
-      if (PositionGetTicket(i) > 0 &&
-          PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL &&
-          PositionGetString(POSITION_SYMBOL) == _Symbol &&
-          PositionGetInteger(POSITION_MAGIC) == (long)MagicNumber)
-      {
-         double entryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
-         double lossPoint = (ask - entryPrice) / _Point;
-
-         for (int j = 0; j < ArraySize(LossLevels); j++)
-         {
-            int level = LossLevels[j];
-            if (MathAbs(lossPoint - level) < 1.0 && !AveragingExistsAtLevel(level, POSITION_TYPE_SELL))
-            {
-               Print("📈 SELL floating loss mendekati -", level, " → Buka SELL baru");
-               OpenSell();
-               return;
-            }
-         }
-      }
-   }
-}
-
-//+------------------------------------------------------------------+
-//| Cek apakah sudah ada posisi di level averaging tertentu         |
-//+------------------------------------------------------------------+
-bool AveragingExistsAtLevel(int level, int positionType)
-{
-   double priceNow = (positionType == POSITION_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
-                                                         : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-
-   for (int i = 0; i < PositionsTotal(); i++)
-   {
-      if (PositionGetTicket(i) > 0 &&
-          PositionGetString(POSITION_SYMBOL) == _Symbol &&
-          PositionGetInteger(POSITION_TYPE) == positionType &&
-          PositionGetInteger(POSITION_MAGIC) == (long)MagicNumber)
-      {
-         double entry = PositionGetDouble(POSITION_PRICE_OPEN);
-         double diff = (positionType == POSITION_TYPE_BUY)
-                       ? (entry - priceNow) / _Point
-                       : (priceNow - entry) / _Point;
-
-         if (MathAbs(diff - level) < 1.0)
-            return true;
-      }
-   }
-   return false;
 }
