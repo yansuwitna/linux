@@ -11,6 +11,9 @@ input int selisih = 20; //Selisih batas pembelian ulang (20))
 input int jml_batas = 10; //jumlah transaksi (10)
 double kesimpulan_stop = 100; //batas sel dan buy (100)
 
+int sisi_kiri = 300;
+int sisi_atas = 10;
+
 //===================================
 input int Slippage = 10;
 input ulong MagicNumber = 445566;
@@ -39,8 +42,8 @@ void TampilkanTeks(string nama, string isi_teks, int atas, int kiri)
       ObjectSetInteger(0, nama_objek, OBJPROP_CORNER, CORNER_LEFT_UPPER);
       ObjectSetInteger(0, nama_objek, OBJPROP_XDISTANCE, atas);
       ObjectSetInteger(0, nama_objek, OBJPROP_YDISTANCE, kiri);
-      ObjectSetInteger(0, nama_objek, OBJPROP_FONTSIZE, 12);
-      ObjectSetInteger(0, nama_objek, OBJPROP_COLOR, clrAqua);
+      ObjectSetInteger(0, nama_objek, OBJPROP_FONTSIZE, 10);
+      ObjectSetInteger(0, nama_objek, OBJPROP_COLOR, clrWhiteSmoke);
       ObjectSetString(0, nama_objek, OBJPROP_TEXT, isi_teks);
      }
    else
@@ -95,19 +98,18 @@ void OnTick()
    double saldo = AccountInfoDouble(ACCOUNT_BALANCE);
    
    //TAMPILAN
-   int sisi_kiri = 300;
-   TampilkanTeks("posisi_buy","POSISI BUY : " + DoubleToString(posisi_buy / _Point,0), sisi_kiri, 80);
-   TampilkanTeks("selisih","SELISIH BUY : " + DoubleToString(selisih_buy,0), sisi_kiri, 110);
-   TampilkanTeks("jml_buy","JML BUY AKTIF : " + DoubleToString((buyCount),0), sisi_kiri, 140);
    
-   TampilkanTeks("posisi_sell","POSISI SELL : " + DoubleToString(posisi_sell / _Point,0), sisi_kiri, 200);
-   TampilkanTeks("selisih_sell","SELISIH SELL : " + DoubleToString(selisih_sell,0), sisi_kiri, 230);
-   TampilkanTeks("jml_sel","JML SEL AKTIF : " + DoubleToString((sellCount),0), sisi_kiri, 260);
+   TampilkanTeks("posisi_buy","POSISI BUY : " + DoubleToString(posisi_buy / _Point,0), sisi_kiri, sisi_atas);
+   TampilkanTeks("selisih","SELISIH BUY : " + DoubleToString(selisih_buy,0), sisi_kiri, sisi_atas+20);
+   TampilkanTeks("jml_buy","JML BUY AKTIF : " + DoubleToString((buyCount),0), sisi_kiri, sisi_atas+40);
    
-   TampilkanTeks("jml_batas","JML BATAS TRANSAKSI : " + IntegerToString((jml_batas),0), sisi_kiri, 300);
+   TampilkanTeks("posisi_sell","POSISI SELL : " + DoubleToString(posisi_sell / _Point,0), sisi_kiri, sisi_atas+80);
+   TampilkanTeks("selisih_sell","SELISIH SELL : " + DoubleToString(selisih_sell,0), sisi_kiri, sisi_atas+100);
+   TampilkanTeks("jml_sel","JML SEL AKTIF : " + DoubleToString((sellCount),0), sisi_kiri, sisi_atas+120);
+   TampilkanTeks("jml_batas","JML BATAS TRANSAKSI : " + IntegerToString((jml_batas),0), sisi_kiri, sisi_atas+160);
    
-   TampilkanTeks("selisih_kesimpulan","SELISIH KESIMPULAN : " + DoubleToString((selisih_kesimpulan),0), sisi_kiri, 350);
-   TampilkanTeks("stop_kesimpulan","STOP KESIMPULAN : " + DoubleToString((kesimpulan_stop),0), sisi_kiri, 380);
+   TampilkanTeks("selisih_kesimpulan","SELISIH KESIMPULAN : " + DoubleToString((selisih_kesimpulan),0), sisi_kiri, sisi_atas+180);
+   TampilkanTeks("stop_kesimpulan","STOP KESIMPULAN : " + DoubleToString((kesimpulan_stop),0), sisi_kiri, sisi_atas+200);
    
    
    //PROSES BUY
@@ -154,21 +156,21 @@ void OnTick()
    }
    
    if(kesimpulan==1){
-      TampilkanTeks("kesimpulan","KESIMPULAN : BERJALAN", sisi_kiri, 410);
+      TampilkanTeks("kesimpulan","KESIMPULAN : BERJALAN", sisi_kiri, sisi_atas+220);
    }else{
-      TampilkanTeks("kesimpulan","KESIMPULAN : STOP", sisi_kiri, 410);
+      TampilkanTeks("kesimpulan","KESIMPULAN : STOP", sisi_kiri, sisi_atas+220);
    }
    
-   TampilkanTeks("tp","TAKE PROFIT : " + IntegerToString(TakeProfitPoints), sisi_kiri, 440);
+   TampilkanTeks("tp","TAKE PROFIT : " + IntegerToString(TakeProfitPoints), sisi_kiri, sisi_atas+260);
     
-   TampilkanTeks("ls","LOTSIZE : " + DoubleToString(LotSize, 2), sisi_kiri, 470);
-   TampilkanTeks("pembelian_ulang","PEMBELIAN ULANG : " + IntegerToString(selisih), sisi_kiri, 500);
+   TampilkanTeks("ls","LOTSIZE : " + DoubleToString(LotSize, 2), sisi_kiri, sisi_atas+280);
+   TampilkanTeks("pembelian_ulang","PEMBELIAN ULANG : " + IntegerToString(selisih), sisi_kiri, sisi_atas+300);
    
-   TampilkanTeks("profit","PROFIT : " + DoubleToString(currentProfit, 2), sisi_kiri, 530);
-   TampilkanTeks("equity","EKUITI : " + DoubleToString(equity, 2), sisi_kiri, 560);
-   TampilkanTeks("margin","MARGIN : " + DoubleToString(margin, 2), sisi_kiri, 590);
-   TampilkanTeks("saldo","SALDO : " + DoubleToString(saldo, 2), sisi_kiri, 620);
-   TampilkanTeks("jml_transaksi","JML TRANSAKSI : " + IntegerToString(buyCount+sellCount), sisi_kiri, 650);
+   TampilkanTeks("profit","PROFIT : " + DoubleToString(currentProfit, 2), sisi_kiri, sisi_atas+340);
+   TampilkanTeks("equity","EKUITI : " + DoubleToString(equity, 2), sisi_kiri, sisi_atas+360);
+   TampilkanTeks("margin","MARGIN : " + DoubleToString(margin, 2), sisi_kiri, sisi_atas+380);
+   TampilkanTeks("saldo","SALDO : " + DoubleToString(saldo, 2), sisi_kiri, sisi_atas+400);
+   TampilkanTeks("jml_transaksi","JML TRANSAKSI : " + IntegerToString(buyCount+sellCount), sisi_kiri, sisi_atas+420);
 }
 
 //+------------------------------------------------------------------+
