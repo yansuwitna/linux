@@ -145,6 +145,10 @@ void OnTick()
       kesimpulan=0;
    }
    
+   if((MathAbs(posisi_buy-posisi_sell)/ _Point) <= selisih){
+      kesimpulan=1;
+   }
+   
    if(buyCount == 0 && sellCount == 0){
       kesimpulan=1;
    }
