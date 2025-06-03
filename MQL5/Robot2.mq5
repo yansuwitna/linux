@@ -20,17 +20,17 @@
 CTrade trade;
 
 // ===== INPUT =====
-input int MaxCandles          = 100;
-input double LotSize          = 0.01;
-input bool useMartingale      = true;  // ⬅️ Tambahan: aktif/nonaktifkan penggandaan lot
-input int TrailingStart       = 5;
-input int TrailingStep        = 5;
-input double SL_Multiplier    = 1.5;
-input double TP_Multiplier    = 1.5;
-input bool useSL              = true;
-input bool useTP              = true;
-input double RepeatMultiplier = 2.0;
-input int MaxTrades           = 3;
+input int MaxCandles          = 100; //Jumlah Candle
+input double LotSize          = 0.01; //Besar Lot
+input bool useMartingale      = true; //Aktifkan Kelipatan Lot
+input int TrailingStart       = 5; //Pindah SL Saat Profit
+input int TrailingStep        = 5; //Pindah SL Lanjutan
+input double SL_Multiplier    = 1.5; //Batas SL x Spread
+input double TP_Multiplier    = 1.5; //Batas TP x Spread
+input bool useSL              = true; //Aktifkan SL
+input bool useTP              = true; //Aktifkan TP
+input double RepeatMultiplier = 2.0; //Pengulangan x Spread
+input int MaxTrades           = 3; //Jumlah Trade
 
 //+------------------------------------------------------------------+
 int CountPositions(string symbol)
@@ -158,7 +158,7 @@ void OnTick()
          if (type == POSITION_TYPE_BUY && (currentPrice - openPrice) >= TrailingStart * point)
          {
             double new_sl = NormalizeDouble(currentPrice - TrailingStep * point, digits);
-            double new_tp = NormalizeDouble(openPrice + (currentPrice - openPrice) + TrailingStart * point, digits);
+            double new_tp = NormalizeDouble(tp + TrailingStart * point, digits);
             if (useSL && new_sl > sl)
                trade.PositionModify(ticket, new_sl, useTP ? new_tp : tp);
          }
@@ -166,7 +166,7 @@ void OnTick()
          if (type == POSITION_TYPE_SELL && (openPrice - currentPrice) >= TrailingStart * point)
          {
             double new_sl = NormalizeDouble(currentPrice + TrailingStep * point, digits);
-            double new_tp = NormalizeDouble(openPrice - (openPrice - currentPrice) - TrailingStart * point, digits);
+            double new_tp = NormalizeDouble(tp - TrailingStart * point, digits);
             if (useSL && (new_sl < sl || sl == 0.0))
                trade.PositionModify(ticket, new_sl, useTP ? new_tp : tp);
          }
