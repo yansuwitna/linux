@@ -1,3 +1,20 @@
+/* 
+| Fitur                                                         | Status |
+| ------------------------------------------------------------- | ------ |
+| Entry berdasarkan candle berjalan                             | ✅      |
+| SL/TP berdasarkan spread × multiplier                         | ✅      |
+| Averaging berdasarkan harga posisi terakhir                   | ✅      |
+| ❗ Lot Martingale dikali 2 setiap posisi baru (bisa dimatikan) | ✅      |
+| Trailing Stop aktif untuk semua posisi                        | ✅      |
+| TP otomatis bergerak menjauh saat trailing aktif              | ✅      |
+| Input LotSize, MaxTrades, pengganda spread SL/TP              | ✅      |
+| Panel info aktif di chart (`Comment()`)                       | ✅      |
+| Multi-chart dan multi-symbol                                  | ✅      |
+| Panah penanda candle bullish dan bearish                      | ✅      |
+
+
+*/
+
 #property strict
 #include <Trade\Trade.mqh>
 CTrade trade;
@@ -5,6 +22,7 @@ CTrade trade;
 // ===== INPUT =====
 input int MaxCandles          = 100;
 input double LotSize          = 0.01;
+input bool useMartingale      = true;  // ⬅️ Tambahan: aktif/nonaktifkan penggandaan lot
 input int TrailingStart       = 5;
 input int TrailingStep        = 5;
 input double SL_Multiplier    = 1.5;
@@ -12,10 +30,9 @@ input double TP_Multiplier    = 1.5;
 input bool useSL              = true;
 input bool useTP              = true;
 input double RepeatMultiplier = 2.0;
-input int MaxTrades           = 3; // Maksimal posisi per simbol
+input int MaxTrades           = 3;
 
 //+------------------------------------------------------------------+
-// Hitung total posisi untuk simbol
 int CountPositions(string symbol)
 {
    int total = 0;
@@ -25,14 +42,17 @@ int CountPositions(string symbol)
    return total;
 }
 
-// Hitung lot berdasarkan martingale
+//+------------------------------------------------------------------+
+// Fungsi hitung lot martingale
 double GetMartingaleLot(int index)
 {
-   double l = LotSize * MathPow(2, index);
+   double base = LotSize;
+   if (useMartingale)
+      base *= MathPow(2, index);
    double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
    double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
    double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
-   return MathMax(minLot, MathMin(NormalizeDouble(l, 2), maxLot));
+   return MathMax(minLot, MathMin(NormalizeDouble(base, 2), maxLot));
 }
 
 //+------------------------------------------------------------------+
@@ -56,7 +76,7 @@ void OnTick()
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
-   // Tampilkan panah candle
+   // 🎯 Tampilkan panah candle
    for (int i = 0; i < MaxCandles && i < Bars(_Symbol, _Period); i++)
    {
       double open  = iOpen(_Symbol, _Period, i);
@@ -84,10 +104,10 @@ void OnTick()
       }
    }
 
+   // 🔁 Entry pertama
    int posisi = CountPositions(_Symbol);
    double lot = GetMartingaleLot(MathMax(0, posisi - 1));
 
-   // Entry pertama
    if (posisi == 0)
    {
       double open = iOpen(_Symbol, _Period, 0);
@@ -108,7 +128,7 @@ void OnTick()
       }
    }
 
-   // Cek posisi terakhir
+   // 🔍 Posisi terakhir untuk averaging
    datetime lastOpenTime = 0;
    double lastOpenPrice = 0.0;
    long lastType = -1;
@@ -126,7 +146,7 @@ void OnTick()
             lastType = PositionGetInteger(POSITION_TYPE);
          }
 
-         // === Trailing Stop semua posisi
+         // 🔁 Trailing
          long type = PositionGetInteger(POSITION_TYPE);
          double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
          double sl = PositionGetDouble(POSITION_SL);
@@ -138,7 +158,7 @@ void OnTick()
          if (type == POSITION_TYPE_BUY && (currentPrice - openPrice) >= TrailingStart * point)
          {
             double new_sl = NormalizeDouble(currentPrice - TrailingStep * point, digits);
-            double new_tp = NormalizeDouble(tp + TrailingStart * point, digits);
+            double new_tp = NormalizeDouble(openPrice + (currentPrice - openPrice) + TrailingStart * point, digits);
             if (useSL && new_sl > sl)
                trade.PositionModify(ticket, new_sl, useTP ? new_tp : tp);
          }
@@ -146,7 +166,7 @@ void OnTick()
          if (type == POSITION_TYPE_SELL && (openPrice - currentPrice) >= TrailingStart * point)
          {
             double new_sl = NormalizeDouble(currentPrice + TrailingStep * point, digits);
-            double new_tp = NormalizeDouble(tp - TrailingStart * point, digits);
+            double new_tp = NormalizeDouble(openPrice - (openPrice - currentPrice) - TrailingStart * point, digits);
             if (useSL && (new_sl < sl || sl == 0.0))
                trade.PositionModify(ticket, new_sl, useTP ? new_tp : tp);
          }
@@ -161,9 +181,10 @@ void OnTick()
       }
    }
 
-   // Averaging berdasarkan posisi terakhir
+   // 💥 Averaging
    if (posisi > 0 && posisi < MaxTrades && lastType != -1)
    {
+      lot = GetMartingaleLot(posisi); // posisi ke-n
       if (lastType == POSITION_TYPE_BUY && bid <= (lastOpenPrice - repeatDistance))
       {
          double sl = useSL ? NormalizeDouble(ask - slDistance, digits) : 0.0;
@@ -180,19 +201,3 @@ void OnTick()
 
    Comment((info == "") ? "📊 Tidak ada posisi aktif" : info);
 }
-
-
-/* 
-| Fitur                                                          | Status |
-| -------------------------------------------------------------- | ------ |
-| Entry berdasarkan candle berjalan                              | ✅      |
-| SL/TP dari spread × multiplier                                 | ✅      |
-| Averaging berdasarkan harga posisi **terakhir**, bukan pertama | ✅      |
-| 🔁 **Lot Martingale: dikali 2 setiap transaksi bertambah**     | ✅      |
-| Trailing Stop aktif untuk semua posisi                         | ✅      |
-| TP bergeser menjauh saat trailing aktif                        | ✅      |
-| Panel info status posisi dan profit                            | ✅      |
-| Panah candle Bullish/Bearish                                   | ✅      |
-| Multi-symbol dan multi-chart aman                              | ✅      |
-
-*/
