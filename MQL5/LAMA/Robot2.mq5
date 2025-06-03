@@ -1,3 +1,18 @@
+/* 
+| Fitur                                                         | Status |
+| ------------------------------------------------------------- | ------ |
+| Entry berdasarkan candle berjalan                             | ✅      |
+| SL/TP berdasarkan spread × multiplier                         | ✅      |
+| Averaging berdasarkan harga posisi terakhir                   | ✅      |
+| ❗ Lot Martingale dikali 2 setiap posisi baru (bisa dimatikan) | ✅      |
+| Trailing Stop aktif untuk semua posisi                        | ✅      |
+| TP otomatis bergerak menjauh saat trailing aktif              | ✅      |
+| Input LotSize, MaxTrades, pengganda spread SL/TP              | ✅      |
+| Panel info aktif di chart (`Comment()`)                       | ✅      |
+| Multi-chart dan multi-symbol                                  | ✅      |
+| Panah penanda candle bullish dan bearish                      | ✅      |
+| Validasi Stochastic untuk Buy/Sell                            | ✅      |
+*/
 #property strict
 #include <Trade\Trade.mqh>
 CTrade trade;
