@@ -9,8 +9,8 @@ input int TrailingStart      = 5;
 input int TrailingStep       = 5;
 input double SL_Multiplier   = 1.5;
 input double TP_Multiplier   = 1.5;
-input bool useSL             = true;     // Aktifkan Stop Loss
-input bool useTP             = true;     // Aktifkan Take Profit
+input bool useSL             = true;
+input bool useTP             = true;
 
 //+------------------------------------------------------------------+
 int OnInit()
@@ -37,7 +37,7 @@ void OnTick()
    lot = MathMax(lotMin, MathMin(lot, lotMax));
    lot = NormalizeDouble(lot, 2);
 
-   // Tampilkan panah candle
+   // Panah candle
    for (int i = 0; i < MaxCandles && i < Bars(_Symbol, _Period); i++)
    {
       double open  = iOpen(_Symbol, _Period, i);
@@ -92,7 +92,7 @@ void OnTick()
       }
    }
 
-   // === TRAILING STOP & PANEL ===
+   // === TRAILING STOP + TP YANG MENJAUH ===
    string info = "";
    if (PositionSelect(_Symbol))
    {
@@ -111,8 +111,9 @@ void OnTick()
          if ((currentPrice - openPrice) >= TrailingStart * point)
          {
             double new_sl = NormalizeDouble(currentPrice - TrailingStep * point, digits);
-            if (useSL && (new_sl > sl))
-               trade.PositionModify(_Symbol, new_sl, tp);
+            double new_tp = NormalizeDouble(tp + TrailingStart * point, digits);
+            if (useSL && new_sl > sl)
+               trade.PositionModify(_Symbol, new_sl, useTP ? new_tp : tp);
          }
          info = "🟢 BUY\n";
       }
@@ -121,8 +122,9 @@ void OnTick()
          if ((openPrice - currentPrice) >= TrailingStart * point)
          {
             double new_sl = NormalizeDouble(currentPrice + TrailingStep * point, digits);
+            double new_tp = NormalizeDouble(tp - TrailingStart * point, digits);
             if (useSL && (new_sl < sl || sl == 0.0))
-               trade.PositionModify(_Symbol, new_sl, tp);
+               trade.PositionModify(_Symbol, new_sl, useTP ? new_tp : tp);
          }
          info = "🔴 SELL\n";
       }
@@ -138,17 +140,18 @@ void OnTick()
 }
 
 
+
 /* 
 
-Fitur	Status ✅
-Buy/Sell dari candle berjalan	✅
-Lot input manual	✅
-SL dan TP berdasarkan spread	✅
-Pengali spread bisa diatur	✅
-Pilih aktif/tidaknya SL dan TP	✅
-Trailing stop	✅
-Panel info real-time	✅
-Panah bullish/bearish	✅
-Aman digunakan di banyak chart	✅
+Fitur	Status
+Buy/Sell berdasarkan candle berjalan	✅
+SL & TP berdasarkan spread × multiplier	✅
+Input useSL dan useTP (aktif/nonaktif)	✅
+Trailing Stop aktif	✅
+TP ikut bergerak saat trailing aktif	✅
+Lot manual (default 0.01)	✅
+Panel info posisi berjalan	✅
+Tanda panah bullish & bearish	✅
+Multi-chart aman (1 posisi per simbol)	✅
 
 */
