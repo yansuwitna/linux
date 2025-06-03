@@ -3,28 +3,36 @@
 CTrade trade;
 
 // ===== INPUT =====
-input int MaxCandles         = 10;
-input double LotSize         = 0.1;
-input int TrailingStart      = 5;
-input int TrailingStep       = 5;
-input double SL_Multiplier   = 10;
-input double TP_Multiplier   = 20;
-input bool useSL             = true;
-input bool useTP             = true;
-input double RepeatMultiplier = 5;
-input int MaxTrades           = 10; // Maksimal posisi per simbol
+input int MaxCandles          = 100;
+input double LotSize          = 0.01;
+input int TrailingStart       = 5;
+input int TrailingStep        = 5;
+input double SL_Multiplier    = 1.5;
+input double TP_Multiplier    = 1.5;
+input bool useSL              = true;
+input bool useTP              = true;
+input double RepeatMultiplier = 2.0;
+input int MaxTrades           = 3; // Maksimal posisi per simbol
 
 //+------------------------------------------------------------------+
-// Hitung jumlah posisi aktif untuk simbol ini
+// Hitung total posisi untuk simbol
 int CountPositions(string symbol)
 {
    int total = 0;
    for (int i = 0; i < PositionsTotal(); i++)
-   {
       if (PositionGetTicket(i) > 0 && PositionGetString(POSITION_SYMBOL) == symbol)
          total++;
-   }
    return total;
+}
+
+// Hitung lot berdasarkan martingale
+double GetMartingaleLot(int index)
+{
+   double l = LotSize * MathPow(2, index);
+   double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   return MathMax(minLot, MathMin(NormalizeDouble(l, 2), maxLot));
 }
 
 //+------------------------------------------------------------------+
@@ -37,23 +45,18 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   int digits        = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-   double spread     = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD) * point;
+   double point  = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   int digits    = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   double spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD) * point;
 
    double slDistance = spread * SL_Multiplier;
    double tpDistance = spread * TP_Multiplier;
    double repeatDistance = spread * RepeatMultiplier;
 
-   double volumeStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-   double lotMin     = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
-   double lotMax     = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
-   double lot = MathFloor(LotSize / volumeStep) * volumeStep;
-   lot = MathMax(lotMin, MathMin(lot, lotMax));
-   lot = NormalizeDouble(lot, 2);
-
-   // Panah candle
+   // Tampilkan panah candle
    for (int i = 0; i < MaxCandles && i < Bars(_Symbol, _Period); i++)
    {
       double open  = iOpen(_Symbol, _Period, i);
@@ -81,26 +84,23 @@ void OnTick()
       }
    }
 
-   // === ENTRY POSISI UTAMA ===
-   if (CountPositions(_Symbol) == 0)
+   int posisi = CountPositions(_Symbol);
+   double lot = GetMartingaleLot(MathMax(0, posisi - 1));
+
+   // Entry pertama
+   if (posisi == 0)
    {
-      double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
       double open = iOpen(_Symbol, _Period, 0);
       double close = iClose(_Symbol, _Period, 0);
-
-      trade.SetDeviationInPoints(20);
-      trade.SetTypeFilling(ORDER_FILLING_IOC);
-
       double sl, tp;
 
-      if (close > open) // BUY
+      if (close > open)
       {
          sl = useSL ? NormalizeDouble(ask - slDistance, digits) : 0.0;
          tp = useTP ? NormalizeDouble(ask + tpDistance, digits) : 0.0;
          trade.Buy(lot, _Symbol, ask, sl, tp, "Buy Bullish");
       }
-      else if (close < open) // SELL
+      else if (close < open)
       {
          sl = useSL ? NormalizeDouble(bid + slDistance, digits) : 0.0;
          tp = useTP ? NormalizeDouble(bid - tpDistance, digits) : 0.0;
@@ -108,83 +108,91 @@ void OnTick()
       }
    }
 
-   // === TRAILING STOP + TP DINAMIS + AVERAGING ===
+   // Cek posisi terakhir
+   datetime lastOpenTime = 0;
+   double lastOpenPrice = 0.0;
+   long lastType = -1;
+
    string info = "";
-   if (PositionSelect(_Symbol))
+   for (int i = 0; i < PositionsTotal(); i++)
    {
-      long type        = PositionGetInteger(POSITION_TYPE);
-      double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
-      double sl        = PositionGetDouble(POSITION_SL);
-      double tp        = PositionGetDouble(POSITION_TP);
-      double profit    = PositionGetDouble(POSITION_PROFIT);
-
-      double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-      double currentPrice = (type == POSITION_TYPE_BUY) ? bid : ask;
-
-      // === Trailing Stop + Geser TP
-      if (type == POSITION_TYPE_BUY && (currentPrice - openPrice) >= TrailingStart * point)
+      if (PositionGetTicket(i) > 0 && PositionGetString(POSITION_SYMBOL) == _Symbol)
       {
-         double new_sl = NormalizeDouble(currentPrice - TrailingStep * point, digits);
-         double new_tp = NormalizeDouble(tp + TrailingStart * point, digits);
-         if (useSL && new_sl > sl)
-            trade.PositionModify(_Symbol, new_sl, useTP ? new_tp : tp);
-         info = "🟢 BUY\n";
-      }
-
-      if (type == POSITION_TYPE_SELL && (openPrice - currentPrice) >= TrailingStart * point)
-      {
-         double new_sl = NormalizeDouble(currentPrice + TrailingStep * point, digits);
-         double new_tp = NormalizeDouble(tp - TrailingStart * point, digits);
-         if (useSL && (new_sl < sl || sl == 0.0))
-            trade.PositionModify(_Symbol, new_sl, useTP ? new_tp : tp);
-         info = "🔴 SELL\n";
-      }
-
-      // === AVERAGING jika jumlah posisi < MaxTrades
-      if (CountPositions(_Symbol) < MaxTrades)
-      {
-         double sl_add, tp_add;
-
-         if (type == POSITION_TYPE_BUY && bid <= (openPrice - repeatDistance))
+         datetime opentime = (datetime)PositionGetInteger(POSITION_TIME);
+         if (opentime > lastOpenTime)
          {
-            sl_add = useSL ? NormalizeDouble(ask - slDistance, digits) : 0.0;
-            tp_add = useTP ? NormalizeDouble(ask + tpDistance, digits) : 0.0;
-            trade.Buy(lot, _Symbol, ask, sl_add, tp_add, "Averaging Buy");
+            lastOpenTime = opentime;
+            lastOpenPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+            lastType = PositionGetInteger(POSITION_TYPE);
          }
 
-         if (type == POSITION_TYPE_SELL && ask >= (openPrice + repeatDistance))
-         {
-            sl_add = useSL ? NormalizeDouble(bid + slDistance, digits) : 0.0;
-            tp_add = useTP ? NormalizeDouble(bid - tpDistance, digits) : 0.0;
-            trade.Sell(lot, _Symbol, bid, sl_add, tp_add, "Averaging Sell");
-         }
-      }
+         // === Trailing Stop semua posisi
+         long type = PositionGetInteger(POSITION_TYPE);
+         double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+         double sl = PositionGetDouble(POSITION_SL);
+         double tp = PositionGetDouble(POSITION_TP);
+         ulong ticket = PositionGetInteger(POSITION_TICKET);
+         double profit = PositionGetDouble(POSITION_PROFIT);
+         double currentPrice = (type == POSITION_TYPE_BUY) ? bid : ask;
 
-      info += StringFormat("Open  : %.%df\nSL    : %.%df\nTP    : %.%df\nProfit: %.2f USD",
-                           digits, openPrice, digits, sl, digits, tp, profit);
-      Comment(info);
+         if (type == POSITION_TYPE_BUY && (currentPrice - openPrice) >= TrailingStart * point)
+         {
+            double new_sl = NormalizeDouble(currentPrice - TrailingStep * point, digits);
+            double new_tp = NormalizeDouble(tp + TrailingStart * point, digits);
+            if (useSL && new_sl > sl)
+               trade.PositionModify(ticket, new_sl, useTP ? new_tp : tp);
+         }
+
+         if (type == POSITION_TYPE_SELL && (openPrice - currentPrice) >= TrailingStart * point)
+         {
+            double new_sl = NormalizeDouble(currentPrice + TrailingStep * point, digits);
+            double new_tp = NormalizeDouble(tp - TrailingStart * point, digits);
+            if (useSL && (new_sl < sl || sl == 0.0))
+               trade.PositionModify(ticket, new_sl, useTP ? new_tp : tp);
+         }
+
+         info += StringFormat("[%d] %s %.%df\nSL: %.%df | TP: %.%df\nP/L: %.2f USD\n\n",
+                              (int)ticket,
+                              (type == POSITION_TYPE_BUY ? "BUY " : "SELL"),
+                              digits, openPrice,
+                              digits, sl,
+                              digits, tp,
+                              profit);
+      }
    }
-   else
+
+   // Averaging berdasarkan posisi terakhir
+   if (posisi > 0 && posisi < MaxTrades && lastType != -1)
    {
-      Comment("📊 Tidak ada posisi aktif di ", _Symbol);
+      if (lastType == POSITION_TYPE_BUY && bid <= (lastOpenPrice - repeatDistance))
+      {
+         double sl = useSL ? NormalizeDouble(ask - slDistance, digits) : 0.0;
+         double tp = useTP ? NormalizeDouble(ask + tpDistance, digits) : 0.0;
+         trade.Buy(lot, _Symbol, ask, sl, tp, "Averaging Buy");
+      }
+      else if (lastType == POSITION_TYPE_SELL && ask >= (lastOpenPrice + repeatDistance))
+      {
+         double sl = useSL ? NormalizeDouble(bid + slDistance, digits) : 0.0;
+         double tp = useTP ? NormalizeDouble(bid - tpDistance, digits) : 0.0;
+         trade.Sell(lot, _Symbol, bid, sl, tp, "Averaging Sell");
+      }
    }
+
+   Comment((info == "") ? "📊 Tidak ada posisi aktif" : info);
 }
 
 
 /* 
-| Fitur                                              | Status |
-| -------------------------------------------------- | ------ |
-| Buy/Sell berdasarkan candle berjalan               | ✅      |
-| SL & TP berdasarkan spread × multiplier            | ✅      |
-| SL/TP bisa diaktifkan via input                    | ✅      |
-| Lot manual                                         | ✅      |
-| Trailing Stop aktif                                | ✅      |
-| TP bergerak menjauh saat trailing aktif            | ✅      |
-| Panel info posisi berjalan                         | ✅      |
-| Tanda panah candle bullish/bearish                 | ✅      |
-| Averaging transaksi arah sama berdasarkan X×spread | ✅      |
-| 🔢 Batas maksimal jumlah transaksi/simbol          | ✅      |
-| Aman untuk multi-chart, multi-symbol               | ✅      |
+| Fitur                                                          | Status |
+| -------------------------------------------------------------- | ------ |
+| Entry berdasarkan candle berjalan                              | ✅      |
+| SL/TP dari spread × multiplier                                 | ✅      |
+| Averaging berdasarkan harga posisi **terakhir**, bukan pertama | ✅      |
+| 🔁 **Lot Martingale: dikali 2 setiap transaksi bertambah**     | ✅      |
+| Trailing Stop aktif untuk semua posisi                         | ✅      |
+| TP bergeser menjauh saat trailing aktif                        | ✅      |
+| Panel info status posisi dan profit                            | ✅      |
+| Panah candle Bullish/Bearish                                   | ✅      |
+| Multi-symbol dan multi-chart aman                              | ✅      |
 
 */
