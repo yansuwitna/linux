@@ -11,8 +11,7 @@
 | Panel info aktif di chart (`Comment()`)                       | ✅      |
 | Multi-chart dan multi-symbol                                  | ✅      |
 | Panah penanda candle bullish dan bearish                      | ✅      |
-
-
+| Validasi Stochastic untuk Buy/Sell                            | ✅      |
 */
 
 #property strict
@@ -20,17 +19,26 @@
 CTrade trade;
 
 // ===== INPUT =====
-input int MaxCandles          = 100; //Jumlah Candle
-input double LotSize          = 0.01; //Besar Lot
-input bool useMartingale      = true; //Aktifkan Kelipatan Lot
-input int TrailingStart       = 5; //Pindah SL Saat Profit
-input int TrailingStep        = 5; //Pindah SL Lanjutan
-input double SL_Multiplier    = 1.5; //Batas SL x Spread
-input double TP_Multiplier    = 1.5; //Batas TP x Spread
-input bool useSL              = true; //Aktifkan SL
-input bool useTP              = true; //Aktifkan TP
-input double RepeatMultiplier = 2.0; //Pengulangan x Spread
-input int MaxTrades           = 3; //Jumlah Trade
+input int MaxCandles          = 10;
+input double LotSize          = 0.01;
+input bool useMartingale      = true;
+input int TrailingStart       = 10;
+input int TrailingStep        = 5;
+input double SL_Multiplier    = 10;
+input double TP_Multiplier    = 20;
+input bool useSL              = true;
+input bool useTP              = true;
+input double RepeatMultiplier = 2.0;
+input int MaxTrades           = 5;
+
+// === STOCHASTIC SETTING ===
+input int KPeriod = 5;
+input int DPeriod = 3;
+input int Slowing = 3;
+input ENUM_MA_METHOD MA_Method = MODE_SMA;
+input ENUM_STO_PRICE PriceField = STO_LOWHIGH;
+
+int handleStoch;
 
 //+------------------------------------------------------------------+
 int CountPositions(string symbol)
@@ -43,7 +51,6 @@ int CountPositions(string symbol)
 }
 
 //+------------------------------------------------------------------+
-// Fungsi hitung lot martingale
 double GetMartingaleLot(int index)
 {
    double base = LotSize;
@@ -56,9 +63,34 @@ double GetMartingaleLot(int index)
 }
 
 //+------------------------------------------------------------------+
+bool IsBuySignal()
+{
+   double main[], signal[];
+   if (CopyBuffer(handleStoch, 0, 0, 1, main) < 1 ||
+       CopyBuffer(handleStoch, 1, 0, 1, signal) < 1)
+      return false;
+   return (main[0] < 20.0 && main[0] > signal[0]);
+}
+
+bool IsSellSignal()
+{
+   double main[], signal[];
+   if (CopyBuffer(handleStoch, 0, 0, 1, main) < 1 ||
+       CopyBuffer(handleStoch, 1, 0, 1, signal) < 1)
+      return false;
+   return (main[0] > 80.0 && main[0] < signal[0]);
+}
+
+//+------------------------------------------------------------------+
 int OnInit()
 {
    Comment("");
+   handleStoch = iStochastic(_Symbol, _Period, KPeriod, DPeriod, Slowing, MA_Method, PriceField);
+   if (handleStoch == INVALID_HANDLE)
+   {
+      Print("❌ Gagal membuat handle Stochastic");
+      return INIT_FAILED;
+   }
    return INIT_SUCCEEDED;
 }
 
@@ -76,7 +108,7 @@ void OnTick()
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
-   // 🎯 Tampilkan panah candle
+   // 🎯 Panah candle
    for (int i = 0; i < MaxCandles && i < Bars(_Symbol, _Period); i++)
    {
       double open  = iOpen(_Symbol, _Period, i);
@@ -104,7 +136,6 @@ void OnTick()
       }
    }
 
-   // 🔁 Entry pertama
    int posisi = CountPositions(_Symbol);
    double lot = GetMartingaleLot(MathMax(0, posisi - 1));
 
@@ -114,13 +145,13 @@ void OnTick()
       double close = iClose(_Symbol, _Period, 0);
       double sl, tp;
 
-      if (close > open)
+      if (close > open && IsBuySignal())
       {
          sl = useSL ? NormalizeDouble(ask - slDistance, digits) : 0.0;
          tp = useTP ? NormalizeDouble(ask + tpDistance, digits) : 0.0;
          trade.Buy(lot, _Symbol, ask, sl, tp, "Buy Bullish");
       }
-      else if (close < open)
+      else if (close < open && IsSellSignal())
       {
          sl = useSL ? NormalizeDouble(bid + slDistance, digits) : 0.0;
          tp = useTP ? NormalizeDouble(bid - tpDistance, digits) : 0.0;
@@ -128,12 +159,11 @@ void OnTick()
       }
    }
 
-   // 🔍 Posisi terakhir untuk averaging
    datetime lastOpenTime = 0;
    double lastOpenPrice = 0.0;
    long lastType = -1;
-
    string info = "";
+
    for (int i = 0; i < PositionsTotal(); i++)
    {
       if (PositionGetTicket(i) > 0 && PositionGetString(POSITION_SYMBOL) == _Symbol)
@@ -146,7 +176,6 @@ void OnTick()
             lastType = PositionGetInteger(POSITION_TYPE);
          }
 
-         // 🔁 Trailing
          long type = PositionGetInteger(POSITION_TYPE);
          double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
          double sl = PositionGetDouble(POSITION_SL);
@@ -181,17 +210,16 @@ void OnTick()
       }
    }
 
-   // 💥 Averaging
    if (posisi > 0 && posisi < MaxTrades && lastType != -1)
    {
-      lot = GetMartingaleLot(posisi); // posisi ke-n
-      if (lastType == POSITION_TYPE_BUY && bid <= (lastOpenPrice - repeatDistance))
+      lot = GetMartingaleLot(posisi);
+      if (lastType == POSITION_TYPE_BUY && bid <= (lastOpenPrice - repeatDistance) && IsBuySignal())
       {
          double sl = useSL ? NormalizeDouble(ask - slDistance, digits) : 0.0;
          double tp = useTP ? NormalizeDouble(ask + tpDistance, digits) : 0.0;
          trade.Buy(lot, _Symbol, ask, sl, tp, "Averaging Buy");
       }
-      else if (lastType == POSITION_TYPE_SELL && ask >= (lastOpenPrice + repeatDistance))
+      else if (lastType == POSITION_TYPE_SELL && ask >= (lastOpenPrice + repeatDistance) && IsSellSignal())
       {
          double sl = useSL ? NormalizeDouble(bid + slDistance, digits) : 0.0;
          double tp = useTP ? NormalizeDouble(bid - tpDistance, digits) : 0.0;
