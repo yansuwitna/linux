@@ -3,14 +3,29 @@
 CTrade trade;
 
 // ===== INPUT =====
-input int MaxCandles         = 100;
-input double LotSize         = 0.01;
+input int MaxCandles         = 10;
+input double LotSize         = 0.1;
 input int TrailingStart      = 5;
 input int TrailingStep       = 5;
-input double SL_Multiplier   = 1.5;
-input double TP_Multiplier   = 1.5;
+input double SL_Multiplier   = 10;
+input double TP_Multiplier   = 20;
 input bool useSL             = true;
 input bool useTP             = true;
+input double RepeatMultiplier = 5;
+input int MaxTrades           = 10; // Maksimal posisi per simbol
+
+//+------------------------------------------------------------------+
+// Hitung jumlah posisi aktif untuk simbol ini
+int CountPositions(string symbol)
+{
+   int total = 0;
+   for (int i = 0; i < PositionsTotal(); i++)
+   {
+      if (PositionGetTicket(i) > 0 && PositionGetString(POSITION_SYMBOL) == symbol)
+         total++;
+   }
+   return total;
+}
 
 //+------------------------------------------------------------------+
 int OnInit()
@@ -28,6 +43,7 @@ void OnTick()
 
    double slDistance = spread * SL_Multiplier;
    double tpDistance = spread * TP_Multiplier;
+   double repeatDistance = spread * RepeatMultiplier;
 
    double volumeStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
    double lotMin     = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
@@ -65,8 +81,8 @@ void OnTick()
       }
    }
 
-   // === ENTRY ORDER ===
-   if (!PositionSelect(_Symbol))
+   // === ENTRY POSISI UTAMA ===
+   if (CountPositions(_Symbol) == 0)
    {
       double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
       double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
@@ -92,7 +108,7 @@ void OnTick()
       }
    }
 
-   // === TRAILING STOP + TP YANG MENJAUH ===
+   // === TRAILING STOP + TP DINAMIS + AVERAGING ===
    string info = "";
    if (PositionSelect(_Symbol))
    {
@@ -102,34 +118,50 @@ void OnTick()
       double tp        = PositionGetDouble(POSITION_TP);
       double profit    = PositionGetDouble(POSITION_PROFIT);
 
-      double currentPrice = (type == POSITION_TYPE_BUY)
-                            ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
-                            : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+      double currentPrice = (type == POSITION_TYPE_BUY) ? bid : ask;
 
-      if (type == POSITION_TYPE_BUY)
+      // === Trailing Stop + Geser TP
+      if (type == POSITION_TYPE_BUY && (currentPrice - openPrice) >= TrailingStart * point)
       {
-         if ((currentPrice - openPrice) >= TrailingStart * point)
-         {
-            double new_sl = NormalizeDouble(currentPrice - TrailingStep * point, digits);
-            double new_tp = NormalizeDouble(tp + TrailingStart * point, digits);
-            if (useSL && new_sl > sl)
-               trade.PositionModify(_Symbol, new_sl, useTP ? new_tp : tp);
-         }
+         double new_sl = NormalizeDouble(currentPrice - TrailingStep * point, digits);
+         double new_tp = NormalizeDouble(tp + TrailingStart * point, digits);
+         if (useSL && new_sl > sl)
+            trade.PositionModify(_Symbol, new_sl, useTP ? new_tp : tp);
          info = "🟢 BUY\n";
       }
-      else if (type == POSITION_TYPE_SELL)
+
+      if (type == POSITION_TYPE_SELL && (openPrice - currentPrice) >= TrailingStart * point)
       {
-         if ((openPrice - currentPrice) >= TrailingStart * point)
-         {
-            double new_sl = NormalizeDouble(currentPrice + TrailingStep * point, digits);
-            double new_tp = NormalizeDouble(tp - TrailingStart * point, digits);
-            if (useSL && (new_sl < sl || sl == 0.0))
-               trade.PositionModify(_Symbol, new_sl, useTP ? new_tp : tp);
-         }
+         double new_sl = NormalizeDouble(currentPrice + TrailingStep * point, digits);
+         double new_tp = NormalizeDouble(tp - TrailingStart * point, digits);
+         if (useSL && (new_sl < sl || sl == 0.0))
+            trade.PositionModify(_Symbol, new_sl, useTP ? new_tp : tp);
          info = "🔴 SELL\n";
       }
 
-      info += StringFormat("Price : %.%df\nSL    : %.%df\nTP    : %.%df\nProfit: %.2f USD",
+      // === AVERAGING jika jumlah posisi < MaxTrades
+      if (CountPositions(_Symbol) < MaxTrades)
+      {
+         double sl_add, tp_add;
+
+         if (type == POSITION_TYPE_BUY && bid <= (openPrice - repeatDistance))
+         {
+            sl_add = useSL ? NormalizeDouble(ask - slDistance, digits) : 0.0;
+            tp_add = useTP ? NormalizeDouble(ask + tpDistance, digits) : 0.0;
+            trade.Buy(lot, _Symbol, ask, sl_add, tp_add, "Averaging Buy");
+         }
+
+         if (type == POSITION_TYPE_SELL && ask >= (openPrice + repeatDistance))
+         {
+            sl_add = useSL ? NormalizeDouble(bid + slDistance, digits) : 0.0;
+            tp_add = useTP ? NormalizeDouble(bid - tpDistance, digits) : 0.0;
+            trade.Sell(lot, _Symbol, bid, sl_add, tp_add, "Averaging Sell");
+         }
+      }
+
+      info += StringFormat("Open  : %.%df\nSL    : %.%df\nTP    : %.%df\nProfit: %.2f USD",
                            digits, openPrice, digits, sl, digits, tp, profit);
       Comment(info);
    }
@@ -140,18 +172,19 @@ void OnTick()
 }
 
 
-
 /* 
-
-Fitur	Status
-Buy/Sell berdasarkan candle berjalan	✅
-SL & TP berdasarkan spread × multiplier	✅
-Input useSL dan useTP (aktif/nonaktif)	✅
-Trailing Stop aktif	✅
-TP ikut bergerak saat trailing aktif	✅
-Lot manual (default 0.01)	✅
-Panel info posisi berjalan	✅
-Tanda panah bullish & bearish	✅
-Multi-chart aman (1 posisi per simbol)	✅
+| Fitur                                              | Status |
+| -------------------------------------------------- | ------ |
+| Buy/Sell berdasarkan candle berjalan               | ✅      |
+| SL & TP berdasarkan spread × multiplier            | ✅      |
+| SL/TP bisa diaktifkan via input                    | ✅      |
+| Lot manual                                         | ✅      |
+| Trailing Stop aktif                                | ✅      |
+| TP bergerak menjauh saat trailing aktif            | ✅      |
+| Panel info posisi berjalan                         | ✅      |
+| Tanda panah candle bullish/bearish                 | ✅      |
+| Averaging transaksi arah sama berdasarkan X×spread | ✅      |
+| 🔢 Batas maksimal jumlah transaksi/simbol          | ✅      |
+| Aman untuk multi-chart, multi-symbol               | ✅      |
 
 */
