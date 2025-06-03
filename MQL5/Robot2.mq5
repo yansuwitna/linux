@@ -14,8 +14,6 @@
 | Validasi Stochastic untuk Buy/Sell                            | ✅      |
 */
 
-
-// ==== [Header & Properti] ====
 #property strict
 #include <Trade\Trade.mqh>
 CTrade trade;
@@ -27,24 +25,30 @@ input bool useMartingale      = true;
 input int TrailingStart       = 10;
 input int TrailingStep        = 5;
 input double SL_Multiplier    = 10;
-input double TP_Multiplier    = 205;
+input double TP_Multiplier    = 20;
 input bool useSL              = true;
 input bool useTP              = true;
 input double RepeatMultiplier = 2.0;
-input int MaxTrades           = 1;
+input int MaxTrades           = 3;
 
-// === STOCHASTIC SETTING ===
+// === STOCHASTIC ===
 input int KPeriod = 8;
 input int DPeriod = 3;
-input int Slowing = 3;
+input int Slowing = 1;
 input ENUM_MA_METHOD MA_Method = MODE_SMA;
 input ENUM_STO_PRICE PriceField = STO_LOWHIGH;
-input double StochUpper = 80.0;
-input double StochLower = 20.0;
-
 int handleStoch;
 
-// ==== [Function Hitung Posisi] ====
+double GetMartingaleLot(int index)
+{
+   double base = LotSize;
+   if (useMartingale) base *= MathPow(2, index);
+   double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   return MathMax(minLot, MathMin(NormalizeDouble(base, 2), maxLot));
+}
+
 int CountPositions(string symbol)
 {
    int total = 0;
@@ -54,34 +58,22 @@ int CountPositions(string symbol)
    return total;
 }
 
-double GetMartingaleLot(int index)
-{
-   double base = LotSize;
-   if (useMartingale)
-      base *= MathPow(2, index);
-   double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-   double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
-   double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
-   return MathMax(minLot, MathMin(NormalizeDouble(base, 2), maxLot));
-}
-
 bool IsBuySignal()
 {
    double main[], signal[];
-   if (CopyBuffer(handleStoch, 0, 0, 1, main) < 1 || CopyBuffer(handleStoch, 1, 0, 1, signal) < 1)
+   if (CopyBuffer(handleStoch, 0, 0, 2, main) < 2 || CopyBuffer(handleStoch, 1, 0, 2, signal) < 2)
       return false;
-   return (main[0] < StochLower && main[0] > signal[0]);
+   return (main[1] < signal[1] && main[0] > signal[0] && main[0] < 50.0);
 }
 
 bool IsSellSignal()
 {
    double main[], signal[];
-   if (CopyBuffer(handleStoch, 0, 0, 1, main) < 1 || CopyBuffer(handleStoch, 1, 0, 1, signal) < 1)
+   if (CopyBuffer(handleStoch, 0, 0, 2, main) < 2 || CopyBuffer(handleStoch, 1, 0, 2, signal) < 2)
       return false;
-   return (main[0] > StochUpper && main[0] < signal[0]);
+   return (main[1] > signal[1] && main[0] < signal[0] && main[0] > 50.0);
 }
 
-// ==== [OnInit] ====
 int OnInit()
 {
    Comment("");
@@ -94,7 +86,6 @@ int OnInit()
    return INIT_SUCCEEDED;
 }
 
-// ==== [OnTick] ====
 void OnTick()
 {
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
@@ -107,7 +98,7 @@ void OnTick()
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
-   // 🎯 Tampilkan panah candle
+   // ==== Panah Bull/Bear Candle ====
    for (int i = 0; i < MaxCandles && i < Bars(_Symbol, _Period); i++)
    {
       double open = iOpen(_Symbol, _Period, i);
@@ -116,8 +107,8 @@ void OnTick()
       double low = iLow(_Symbol, _Period, i);
       datetime time = iTime(_Symbol, _Period, i);
 
-      string nameBull = "ArrowBull_" + _Symbol + "_" + IntegerToString(i);
-      string nameBear = "ArrowBear_" + _Symbol + "_" + IntegerToString(i);
+      string nameBull = "ArrowBull_" + IntegerToString(i);
+      string nameBear = "ArrowBear_" + IntegerToString(i);
       ObjectDelete(0, nameBull);
       ObjectDelete(0, nameBear);
 
@@ -135,31 +126,54 @@ void OnTick()
       }
    }
 
+   // ==== Panah Crossover Stochastic ====
+   double main[], signal[];
+   if (CopyBuffer(handleStoch, 0, 0, 2, main) == 2 && CopyBuffer(handleStoch, 1, 0, 2, signal) == 2)
+   {
+      datetime time = iTime(_Symbol, _Period, 0);
+      double price = iClose(_Symbol, _Period, 0);
+      string nameCross = "StochCross_" + TimeToString(time, TIME_MINUTES);
+      ObjectDelete(0, nameCross);
+
+      if (main[1] < signal[1] && main[0] > signal[0] && main[0] < 50.0) // Buy signal
+      {
+         ObjectCreate(0, nameCross, OBJ_ARROW, 0, time, price - 10 * point);
+         ObjectSetInteger(0, nameCross, OBJPROP_ARROWCODE, 241);
+         ObjectSetInteger(0, nameCross, OBJPROP_COLOR, clrBlue);
+      }
+      else if (main[1] > signal[1] && main[0] < signal[0] && main[0] > 50.0) // Sell signal
+      {
+         ObjectCreate(0, nameCross, OBJ_ARROW, 0, time, price + 10 * point);
+         ObjectSetInteger(0, nameCross, OBJPROP_ARROWCODE, 242);
+         ObjectSetInteger(0, nameCross, OBJPROP_COLOR, clrOrangeRed);
+      }
+   }
+
    int posisi = CountPositions(_Symbol);
    double lot = GetMartingaleLot(MathMax(0, posisi - 1));
 
-   // Entry Pertama
+   // ==== Entry Awal ====
    if (posisi == 0)
    {
       double open = iOpen(_Symbol, _Period, 0);
       double close = iClose(_Symbol, _Period, 0);
-      double sl, tp;
+      double sl = 0.0, tp = 0.0;
 
       if (close > open && IsBuySignal())
       {
          sl = useSL ? NormalizeDouble(ask - slDistance, digits) : 0.0;
          tp = useTP ? NormalizeDouble(ask + tpDistance, digits) : 0.0;
-         trade.Buy(lot, _Symbol, ask, sl, tp, "Buy Bullish");
+         trade.Buy(lot, _Symbol, ask, sl, tp, "Buy Signal");
       }
       else if (close < open && IsSellSignal())
       {
          sl = useSL ? NormalizeDouble(bid + slDistance, digits) : 0.0;
          tp = useTP ? NormalizeDouble(bid - tpDistance, digits) : 0.0;
-         trade.Sell(lot, _Symbol, bid, sl, tp, "Sell Bearish");
+         trade.Sell(lot, _Symbol, bid, sl, tp, "Sell Signal");
       }
    }
 
-   // === Averaging + Trailing ===
+   // ==== Trailing dan Info ====
    datetime lastOpenTime = 0;
    double lastOpenPrice = 0.0;
    long lastType = -1;
@@ -211,7 +225,7 @@ void OnTick()
       }
    }
 
-   // === Averaging
+   // ==== Averaging ====
    if (posisi > 0 && posisi < MaxTrades && lastType != -1)
    {
       lot = GetMartingaleLot(posisi);
