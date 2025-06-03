@@ -14,33 +14,37 @@
 | Validasi Stochastic untuk Buy/Sell                            | ✅      |
 */
 
+
+// ==== [Header & Properti] ====
 #property strict
 #include <Trade\Trade.mqh>
 CTrade trade;
 
-// ===== INPUT =====
+// ==== [Input Parameter] ====
 input int MaxCandles          = 10;
 input double LotSize          = 0.01;
 input bool useMartingale      = true;
 input int TrailingStart       = 10;
 input int TrailingStep        = 5;
 input double SL_Multiplier    = 10;
-input double TP_Multiplier    = 20;
+input double TP_Multiplier    = 205;
 input bool useSL              = true;
 input bool useTP              = true;
 input double RepeatMultiplier = 2.0;
-input int MaxTrades           = 5;
+input int MaxTrades           = 1;
 
 // === STOCHASTIC SETTING ===
-input int KPeriod = 5;
+input int KPeriod = 8;
 input int DPeriod = 3;
 input int Slowing = 3;
 input ENUM_MA_METHOD MA_Method = MODE_SMA;
 input ENUM_STO_PRICE PriceField = STO_LOWHIGH;
+input double StochUpper = 80.0;
+input double StochLower = 20.0;
 
 int handleStoch;
 
-//+------------------------------------------------------------------+
+// ==== [Function Hitung Posisi] ====
 int CountPositions(string symbol)
 {
    int total = 0;
@@ -50,7 +54,6 @@ int CountPositions(string symbol)
    return total;
 }
 
-//+------------------------------------------------------------------+
 double GetMartingaleLot(int index)
 {
    double base = LotSize;
@@ -62,26 +65,23 @@ double GetMartingaleLot(int index)
    return MathMax(minLot, MathMin(NormalizeDouble(base, 2), maxLot));
 }
 
-//+------------------------------------------------------------------+
 bool IsBuySignal()
 {
    double main[], signal[];
-   if (CopyBuffer(handleStoch, 0, 0, 1, main) < 1 ||
-       CopyBuffer(handleStoch, 1, 0, 1, signal) < 1)
+   if (CopyBuffer(handleStoch, 0, 0, 1, main) < 1 || CopyBuffer(handleStoch, 1, 0, 1, signal) < 1)
       return false;
-   return (main[0] < 20.0 && main[0] > signal[0]);
+   return (main[0] < StochLower && main[0] > signal[0]);
 }
 
 bool IsSellSignal()
 {
    double main[], signal[];
-   if (CopyBuffer(handleStoch, 0, 0, 1, main) < 1 ||
-       CopyBuffer(handleStoch, 1, 0, 1, signal) < 1)
+   if (CopyBuffer(handleStoch, 0, 0, 1, main) < 1 || CopyBuffer(handleStoch, 1, 0, 1, signal) < 1)
       return false;
-   return (main[0] > 80.0 && main[0] < signal[0]);
+   return (main[0] > StochUpper && main[0] < signal[0]);
 }
 
-//+------------------------------------------------------------------+
+// ==== [OnInit] ====
 int OnInit()
 {
    Comment("");
@@ -94,27 +94,26 @@ int OnInit()
    return INIT_SUCCEEDED;
 }
 
-//+------------------------------------------------------------------+
+// ==== [OnTick] ====
 void OnTick()
 {
-   double point  = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   int digits    = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    double spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD) * point;
 
    double slDistance = spread * SL_Multiplier;
    double tpDistance = spread * TP_Multiplier;
    double repeatDistance = spread * RepeatMultiplier;
-
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
-   // 🎯 Panah candle
+   // 🎯 Tampilkan panah candle
    for (int i = 0; i < MaxCandles && i < Bars(_Symbol, _Period); i++)
    {
-      double open  = iOpen(_Symbol, _Period, i);
+      double open = iOpen(_Symbol, _Period, i);
       double close = iClose(_Symbol, _Period, i);
-      double high  = iHigh(_Symbol, _Period, i);
-      double low   = iLow(_Symbol, _Period, i);
+      double high = iHigh(_Symbol, _Period, i);
+      double low = iLow(_Symbol, _Period, i);
       datetime time = iTime(_Symbol, _Period, i);
 
       string nameBull = "ArrowBull_" + _Symbol + "_" + IntegerToString(i);
@@ -139,6 +138,7 @@ void OnTick()
    int posisi = CountPositions(_Symbol);
    double lot = GetMartingaleLot(MathMax(0, posisi - 1));
 
+   // Entry Pertama
    if (posisi == 0)
    {
       double open = iOpen(_Symbol, _Period, 0);
@@ -159,6 +159,7 @@ void OnTick()
       }
    }
 
+   // === Averaging + Trailing ===
    datetime lastOpenTime = 0;
    double lastOpenPrice = 0.0;
    long lastType = -1;
@@ -210,6 +211,7 @@ void OnTick()
       }
    }
 
+   // === Averaging
    if (posisi > 0 && posisi < MaxTrades && lastType != -1)
    {
       lot = GetMartingaleLot(posisi);
