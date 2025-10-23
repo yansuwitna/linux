@@ -1,0 +1,51 @@
+#!/bin/bash
+# ==============================================
+#  Script Install MetaTrader 5 Web di Ubuntu
+#  via Docker + noVNC + LXDE Desktop
+#  Tested on Ubuntu 20.04 - 24.04
+# ==============================================
+
+set -e
+
+echo "=== Update & install dependency ==="
+sudo apt update -y
+sudo apt install -y curl wget apt-transport-https ca-certificates gnupg lsb-release
+
+echo "=== Install Docker ==="
+if ! command -v docker >/dev/null 2>&1; then
+    curl -fsSL https://get.docker.com | sh
+    sudo systemctl enable docker
+    sudo systemctl start docker
+else
+    echo "Docker sudah terpasang."
+fi
+
+echo "=== Pull image Ubuntu LXDE + VNC ==="
+sudo docker pull dorowu/ubuntu-desktop-lxde-vnc
+
+echo "=== Buat folder untuk MetaTrader 5 ==="
+mkdir -p ~/mt5
+cd ~/mt5
+
+echo "=== Jalankan container MetaTrader 5 ==="
+sudo docker run -d \
+  --name metatrader5 \
+  -p 8080:80 \
+  -p 5900:5900 \
+  -v ~/mt5:/root/Desktop/MT5 \
+  dorowu/ubuntu-desktop-lxde-vnc
+
+echo "=== Container sedang berjalan ==="
+sudo docker ps | grep metatrader5
+
+IP=$(hostname -I | awk '{print $1}')
+echo ""
+echo "✅ Selesai! Sekarang buka di browser:"
+echo "👉 http://$IP:8080"
+echo ""
+echo "User: root"
+echo "Password: (kosong)"
+echo "Akses juga via VNC jika perlu: $IP:5900"
+echo ""
+echo "Kamu bisa masuk ke desktop, lalu download MetaTrader 5 dari:"
+echo "https://www.metatrader5.com/en/download"
