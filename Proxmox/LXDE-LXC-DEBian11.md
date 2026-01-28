@@ -29,7 +29,7 @@ exit
 
 apt install -y novnc websockify
 
-http://IP_LXC:6080/vnc.html
+cek di client ===>>> http://IP_LXC:6080/vnc.html
 
 Cek Di Server
 websockify --web /usr/share/novnc/ 6080 localhost:5901
