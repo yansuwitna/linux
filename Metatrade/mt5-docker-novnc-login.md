@@ -95,6 +95,9 @@ docker exec -it mt5-docker bash
 apt update & apt install -y apache2-utils
 htpasswd -c /etc/nginx/.htpasswd admin
 
+nano /etc/nginx/sites-enabled/default
+Hilangkan Tanda # paling atas di 
+
 nginx -s reload
 exit
 
