@@ -65,7 +65,7 @@ docker run -d \
   -e VNC_PASSWORD=123456 \
   -e NOVNC_PASSWORD=123456 \
   -v ~/mt5-data:/config \
-  -v ~/mt5-nginx/default.conf:/etc/nginx/sites-enable/default.conf \
+  -v ~/mt5-nginx/default:/etc/nginx/sites-enable/default \
   --restart unless-stopped \
   gmag11/metatrader5_vnc
 
@@ -92,8 +92,9 @@ hmod +x konfig.sh
 Untuk Membut Password No VNC
 
 docker exec -it mt5-docker bash
-apt install -y apache2-utils
+apt update & apt install -y apache2-utils
 htpasswd -c /etc/nginx/.htpasswd admin
+
 nginx -s reload
 exit
 
