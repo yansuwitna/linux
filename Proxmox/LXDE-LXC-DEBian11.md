@@ -4,6 +4,8 @@ apt install -y xfce4 xfce4-goodies xfce4-terminal dbus-x11
 
 apt install -y tigervnc-standalone-server tigervnc-common xterm
 
+apt install -y novnc websockify
+
 adduser vncuser
 usermod -aG sudo vncuser
 su - vncuser
@@ -25,16 +27,14 @@ vncserver -localhost yes :1
 
 vncserver -list
 
-exit
-
-apt install -y novnc websockify
-
-cek di client ===>>> http://IP_LXC:6080/vnc.html
-
-Cek Di Server
 websockify --web /usr/share/novnc/ 6080 localhost:5901
 
+cek di client ===>>> 
+http://IP_LXC:6080/vnc.html
+
 === Buat Service noVNC (AUTO START)==
+
+masuk root
 
 nano /etc/systemd/system/novnc.service
 
@@ -58,3 +58,8 @@ systemctl status novnc
 crontab -e
 
 @reboot /usr/bin/vncserver -localhost yes :1
+
+Uji COba 
+reboot
+systemctl status novnc
+vncserver -list
