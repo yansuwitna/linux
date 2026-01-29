@@ -45,7 +45,7 @@ rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/mt5-web /etc/nginx/sites-enabled/mt5-web
 
 echo "=== [5/6] Mengecek konfigurasi Nginx ==="
-nginx -t
+/sbin/nginx -t
 
 echo "=== [6/6] Restart Nginx ==="
 systemctl restart nginx
