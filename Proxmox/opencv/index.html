@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Recognition Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px }
+        textarea { width: 100% }
+        img { max-width: 200px; margin-top: 10px; border: 1px solid #ccc }
+        hr { margin: 30px 0 }
+        button { padding: 8px 16px }
+    </style>
+</head>
+<body>
+
+<h2>📸 REGISTER WAJAH</h2>
+<form action="register.php" method="post" enctype="multipart/form-data" target="_blank">
+    <input type="file" name="image" accept="image/*" onchange="preview(this,'regPreview')" required>
+    <br>
+    <img id="regPreview">
+    <br><br>
+    <button type="submit">Register</button>
+</form>
+
+<p style="color:#666">
+➡️ Salin <b>Face Vector</b> dari hasil register lalu tempel ke form match
+</p>
+
+<hr>
+
+<h2>🔍 MATCH WAJAH</h2>
+<form action="match.php" method="post" enctype="multipart/form-data">
+    <label>Foto Baru:</label><br>
+    <input type="file" name="image" accept="image/*" onchange="preview(this,'matchPreview')" required>
+    <br>
+    <img id="matchPreview">
+    <br><br>
+
+    <label>Face Vector (hasil register):</label><br>
+    <textarea name="face_vector" rows="8" placeholder='[12, 34, 56, ...]' required></textarea>
+    <br><br>
+
+    <button type="submit">Match</button>
+</form>
+
+<script>
+function preview(input, id) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => document.getElementById(id).src = e.target.result;
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+
+</body>
+</html>
