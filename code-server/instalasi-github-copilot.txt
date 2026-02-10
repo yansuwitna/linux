@@ -1,0 +1,37 @@
+nano /home/web/.config/code-server/config.yaml
+
+bind-addr: 0.0.0.0:8080
+auth: password
+password: GANTI_PASSWORD
+cert: true
+
+
+sudo systemctl edit --full code-server@web
+
+[Unit]
+Description=code-server
+After=network.target
+
+[Service]
+Type=exec
+User=%i
+Restart=always
+
+Environment=EXTENSIONS_GALLERY='{"serviceUrl":"https://marketplace.visualstudio.com/_apis/public/gallery","cacheUrl":"https://vscode.blob.core.windows.net/gallery/index","itemUrl":"https://marketplace.visualstudio.com/items"}'
+
+ExecStart=/usr/bin/code-server
+
+[Install]
+WantedBy=default.target
+
+
+sudo systemctl daemon-reload
+sudo systemctl restart code-server
+
+
+code-server --version
+
+code-server --install-extension GitHub.copilot
+
+atau 
+Install langsung di code-server web
