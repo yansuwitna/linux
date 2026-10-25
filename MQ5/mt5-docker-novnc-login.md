@@ -116,5 +116,23 @@ Untuk Membut Password No VNC
 Uji Coba Di Client
 
 
+Jika Error
+
+
+Masuk Ke Terminal Proxmox 
+pct stop 106 => lihat kode vps misalya 106
+
+lanjutkan 
+pct stop 106
+nano /etc/pve/lxc/106.conf
+
+Tambahkan Paling Bawah 
+lxc.apparmor.profile: unconfined
+lxc.mount.auto: proc:rw sys:rw
+
+Jalankan Ulang 
+pct exec 106 -- docker rm -f mt5-docker
+pct exec 106 -- bash /root/install.sh
+
 
 
