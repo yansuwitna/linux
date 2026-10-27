@@ -2,24 +2,20 @@
 
 Panduan ini menjelaskan langkah demi langkah membuat lingkungan LXC Debian 12 multi-user di Proxmox VE. Setiap pengguna (`akun1`, `akun2`, `akun3`) akan memiliki sesi desktop Openbox, port VNC/noVNC, serta instalasi MetaTrader 5 (MT5) sendiri di dalam *Wine Prefix* masing-masing tanpa saling mengganggu.
 
----
-
 ## Pemetaan Port & Sesi Pengguna
 
-| Nama User | VNC Display | Port VNC Internal | Port Web noVNC | URL Browser |
-| :--- | :---: | :---: | :---: | :--- |
-| **akun1** | `:1` | `5901` | `6081` | `http://<IP-LXC>:6081/` |
-| **akun2** | `:2` | `5902` | `6082` | `http://<IP-LXC>:6082/` |
-| **akun3** | `:3` | `5903` | `6083` | `http://<IP-LXC>:6083/` |
-
----
+| Nama User | VNC Display | Port VNC Internal | Port Web noVNC | URL Browser | 
+| ----- | ----- | ----- | ----- | ----- | 
+| **akun1** | `:1` | `5901` | `6081` | `http://<IP-LXC>:6081/` | 
+| **akun2** | `:2` | `5902` | `6082` | `http://<IP-LXC>:6082/` | 
+| **akun3** | `:3` | `5903` | `6083` | `http://<IP-LXC>:6083/` | 
 
 ## LANGKAH 1: Membuat Debian 12 LXC di Proxmox
 
 1. Unduh template **Debian 12 (Bookworm)** via Web GUI Proxmox: `local` -> `CT Templates` -> `Templates`.
 2. Klik tombol **Create CT** dan isi spesifikasi berikut:
    - **Hostname:** `mt5-multiuser`
-   - **CPU:** Minimal 4 Core (direkomendasikan untuk 3 instance MT5)
+   - **CPU:** Minimal 4 Core
    - **RAM:** Minimal 6144 MB (6 GB) atau 8192 MB (8 GB)
    - **Swap:** 4096 MB
    - **Disk:** Minimal 60 GB - 80 GB
@@ -29,9 +25,7 @@ Panduan ini menjelaskan langkah demi langkah membuat lingkungan LXC Debian 12 mu
    - `keyctl` (Centang)
 4. Selesaikan pembuatan container dan jalankan container (Start CT).
 
----
-
-## LANGKAH 2: Persiapan Sistem & Instalasi Depedensi (sebagai `root`)
+## LANGKAH 2: Persiapan Sistem & Instalasi Dependensi (sebagai `root`)
 
 Masuk ke console LXC sebagai `root` dan jalankan perintah berikut:
 
@@ -51,8 +45,6 @@ apt install -y \
 systemctl enable --now haveged
 ```
 
----
-
 ## LANGKAH 3: Pemasangan WineHQ Stable (Wine 11)
 
 ```bash
@@ -69,16 +61,12 @@ apt install -y --install-recommends winehq-stable
 wine --version
 ```
 
----
-
 ## LANGKAH 4: Menyiapkan Direct Access noVNC (Port Web)
 
 ```bash
 # Buat symlink index.html agar browser langsung membuka layar VNC tanpa mengetik vnc.html
 ln -sf /usr/share/novnc/vnc.html /usr/share/novnc/index.html
 ```
-
----
 
 ## LANGKAH 5: Konfigurasi Pengguna (`akun1`, `akun2`, `akun3`)
 
@@ -139,34 +127,33 @@ chmod +x /home/akun1/.config/openbox/autostart
 chown -R akun1:akun1 /home/akun1/.config /home/akun1/Downloads
 ```
 
----
+## LANGKAH 6: Membuat Service Systemd yang Stabil (Type=simple & -fg)
 
-## LANGKAH 6: Membuat Service Systemd untuk VNC & noVNC
-
-Buat file unit service untuk **`akun1`**:
+Gunakan konfigurasi `Type=simple` dengan argumen `-fg` untuk VNC dan format bersih untuk noVNC agar terhindar dari *timeout*:
 
 ```bash
-# 1. Service VNC Display :1
+# 1. Service VNC Display :1 (Type=simple + -fg)
 cat << 'EOF' > /etc/systemd/system/vncserver-akun1.service
 [Unit]
 Description=TigerVNC Server untuk akun1 (:1)
 After=syslog.target network.target
 
 [Service]
-Type=forking
+Type=simple
 User=akun1
 Group=akun1
 WorkingDirectory=/home/akun1
-PIDFile=/home/akun1/.vnc/%H:1.pid
 ExecStartPre=-/usr/bin/vncserver -kill :1 > /dev/null 2>&1
-ExecStart=/usr/bin/vncserver :1 -localhost yes -geometry 1366x768 -depth 24
+ExecStart=/usr/bin/vncserver :1 -fg -localhost yes -geometry 1366x768 -depth 24
 ExecStop=/usr/bin/vncserver -kill :1
+Restart=on-failure
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# 2. Service noVNC Web Port 6081
+# 2. Service noVNC Web Port 6081 (Format Bersih)
 cat << 'EOF' > /etc/systemd/system/novnc-akun1.service
 [Unit]
 Description=noVNC Service untuk akun1 (Port 6081)
@@ -175,8 +162,9 @@ After=vncserver-akun1.service
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/bin/websockify --web=/usr/share/novnc/ --default_path=index.html?autoconnect=true 6081 localhost:5901
+ExecStart=/usr/bin/websockify --web=/usr/share/novnc/ 6081 localhost:5901
 Restart=on-failure
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
@@ -188,11 +176,9 @@ systemctl enable --now vncserver-akun1.service
 systemctl enable --now novnc-akun1.service
 ```
 
----
-
 ## SKRIP AUTOMATISASI ALL-IN-ONE (`install-multiuser.sh`)
 
-Jika ingin memasang 3 akun sekaligus secara otomatis dalam 1 kali eksekusi, simpan kode bash di bawah ini menjadi `install-multiuser.sh` di dalam LXC dan jalankan:
+Skrip otomatisasi penuh untuk 3 akun sekaligus dengan konfigurasi service yang stabil:
 
 ```bash
 #!/usr/bin/env bash
@@ -279,21 +265,22 @@ EOF
     chmod +x "$USER_HOME/.config/openbox/autostart"
     chown -R "$USER_NAME:$USER_NAME" "$USER_HOME/.config" "$USER_HOME/Downloads"
 
-    # Services
+    # Services (Type=simple + -fg)
     cat << EOF > /etc/systemd/system/vncserver-$USER_NAME.service
 [Unit]
 Description=TigerVNC Server untuk $USER_NAME (:$DISPLAY_NUM)
 After=syslog.target network.target
 
 [Service]
-Type=forking
+Type=simple
 User=$USER_NAME
 Group=$USER_NAME
 WorkingDirectory=$USER_HOME
-PIDFile=$USER_HOME/.vnc/%H:$DISPLAY_NUM.pid
 ExecStartPre=-/usr/bin/vncserver -kill :$DISPLAY_NUM > /dev/null 2>&1
-ExecStart=/usr/bin/vncserver :$DISPLAY_NUM -localhost yes -geometry 1366x768 -depth 24
+ExecStart=/usr/bin/vncserver :$DISPLAY_NUM -fg -localhost yes -geometry 1366x768 -depth 24
 ExecStop=/usr/bin/vncserver -kill :$DISPLAY_NUM
+Restart=on-failure
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
@@ -307,8 +294,9 @@ After=vncserver-$USER_NAME.service
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/bin/websockify --web=/usr/share/novnc/ --default_path=index.html?autoconnect=true $WEB_PORT localhost:$VNC_PORT
+ExecStart=/usr/bin/websockify --web=/usr/share/novnc/ $WEB_PORT localhost:$VNC_PORT
 Restart=on-failure
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
@@ -328,8 +316,8 @@ IP_ADDR=$(hostname -I | awk '{print $1}')
 echo "===================================================="
 echo " INSTALASI MULTI-USER SELESAI!"
 echo "===================================================="
-echo " akun1 -> http://$IP_ADDR:6081/ (Pass VNC: passAkun1_123)"
-echo " akun2 -> http://$IP_ADDR:6082/ (Pass VNC: passAkun2_123)"
-echo " akun3 -> http://$IP_ADDR:6083/ (Pass VNC: passAkun3_123)"
+echo " akun1 -> http://$IP_ADDR:6081/vnc.html (Pass VNC: passAkun1_123)"
+echo " akun2 -> http://$IP_ADDR:6082/vnc.html (Pass VNC: passAkun2_123)"
+echo " akun3 -> http://$IP_ADDR:6083/vnc.html (Pass VNC: passAkun3_123)"
 echo "===================================================="
 ```
