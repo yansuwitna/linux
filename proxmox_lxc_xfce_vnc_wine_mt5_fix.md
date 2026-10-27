@@ -171,7 +171,7 @@ systemctl restart networking
 ip a
 
 //=======================Download MT5 di Akun1, Akun2 dan Akun3
-su - akun1
+//Masuk Ke VNC Via Web 
 wget https://download.terminal.free/cdn/web/metaquotes.ltd/mt5/mt5setup.exe
 
 //=======================Install MT5
