@@ -49,6 +49,7 @@ systemctl enable --now haveged
 
 ```bash
 # Tambahkan kunci repository WineHQ
+rm -f /etc/apt/sources.list.d/winehq*
 install -d -m 0755 /etc/apt/keyrings
 wget -qO /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
 wget -qNP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/debian/dists/bookworm/winehq-bookworm.sources
